@@ -1,0 +1,6 @@
+{
+  "name": "RepoDoc",
+  "description": "Transform any repository or local folder into structured, AI-ready documentation with summaries and commit history.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["AI Documentation", "GitHub Integration", "Markdown Processing"]
+}
