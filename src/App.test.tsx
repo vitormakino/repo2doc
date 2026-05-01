@@ -7,13 +7,13 @@ global.fetch = vi.fn();
 
 // Mock GoogleGenAI since it's used in App
 vi.mock('@google/genai', () => ({
-  GoogleGenAI: vi.fn().mockImplementation(function() {
+  GoogleGenAI: vi.fn().mockImplementation(function () {
     return {
       models: {
-        generateContent: vi.fn().mockResolvedValue({ text: 'mock summary' })
-      }
+        generateContent: vi.fn().mockResolvedValue({ text: 'mock summary' }),
+      },
     };
-  })
+  }),
 }));
 
 describe('App Component', () => {

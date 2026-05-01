@@ -26,10 +26,16 @@ describe('Utility Functions', () => {
     const mockState: DocState = {
       title: 'Test Repo',
       files: [
-        { path: 'README.md', name: 'README.md', content: 'Hello World', type: 'file', summary: 'Brief intro' }
+        {
+          path: 'README.md',
+          name: 'README.md',
+          content: 'Hello World',
+          type: 'file',
+          summary: 'Brief intro',
+        },
       ],
       history: [],
-      toc: ['README.md']
+      toc: ['README.md'],
     };
 
     const mockOptions: ProcessingOptions = {
@@ -38,7 +44,7 @@ describe('Utility Functions', () => {
       generateIndex: true,
       llmOptimized: false,
       organizationStrategy: 'folder',
-      formats: ['markdown']
+      formats: ['markdown'],
     };
 
     it('should generate basic markdown with TOC', () => {

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import request from 'supertest';
 import { app } from './server';
 
@@ -11,14 +11,25 @@ vi.mock('vite', () => ({
 
 // Mock Octokit
 vi.mock('@octokit/rest', () => ({
-  Octokit: vi.fn().mockImplementation(function() {
+  Octokit: vi.fn().mockImplementation(function () {
     return {
       repos: {
-        getContent: vi.fn().mockResolvedValue({ data: { name: 'README.md', type: 'file', content: 'hello' } }),
-        listCommits: vi.fn().mockResolvedValue({ data: [{ sha: '123', commit: { message: 'test', author: { name: 'user', date: '2024-01-01' } } }] }),
+        getContent: vi
+          .fn()
+          .mockResolvedValue({ data: { name: 'README.md', type: 'file', content: 'hello' } }),
+        listCommits: vi
+          .fn()
+          .mockResolvedValue({
+            data: [
+              {
+                sha: '123',
+                commit: { message: 'test', author: { name: 'user', date: '2024-01-01' } },
+              },
+            ],
+          }),
       },
     };
-  })
+  }),
 }));
 
 describe('API Endpoints', () => {

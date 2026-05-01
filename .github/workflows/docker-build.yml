@@ -2,9 +2,9 @@ name: Docker Build and Push
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: ['main', 'master']
   pull_request:
-    branches: [ "main", "master" ]
+    branches: ['main', 'master']
 
 jobs:
   build-and-push:
@@ -32,6 +32,9 @@ jobs:
         run: |
           npx playwright install --with-deps chromium
           npm run test:e2e
+
+      - name: Check Format
+        run: npx prettier --check .
 
       - name: Lint
         run: npm run lint

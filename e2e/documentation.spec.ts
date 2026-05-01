@@ -35,7 +35,7 @@ test.describe('RepoDoc Core Flow', () => {
     // We can check if the visual state changes or just check if they are clickable
     await expect(historyToggle).toBeVisible();
     await historyToggle.click();
-    
+
     await expect(summariesToggle).toBeVisible();
     await summariesToggle.click();
   });
@@ -43,7 +43,7 @@ test.describe('RepoDoc Core Flow', () => {
   test('should show error for invalid repository URL', async ({ page }) => {
     const input = page.getByPlaceholder('https://github.com/owner/repo');
     await input.fill('https://github.com/invalid/repo');
-    
+
     // Add the source first
     await page.locator('button:has(svg)').last().click(); // Click the plus button
     await expect(page.getByText('invalid/repo')).toBeVisible();
@@ -51,14 +51,16 @@ test.describe('RepoDoc Core Flow', () => {
     const executeBtn = page.getByRole('button', { name: 'Execute Generator' });
     await executeBtn.click();
 
-    await expect(page.getByText('Pipeline Interrupted').or(page.getByText('System actively processing'))).toBeVisible();
+    await expect(
+      page.getByText('Pipeline Interrupted').or(page.getByText('System actively processing')),
+    ).toBeVisible();
   });
 
   test('should allow cancelling the process', async ({ page }) => {
     const input = page.getByPlaceholder('https://github.com/owner/repo');
     await input.fill('https://github.com/vitor-makino/repodoc'); // use a real-ish looking one
     await page.locator('button:has(svg)').last().click();
-    
+
     const executeBtn = page.getByRole('button', { name: 'Execute Generator' });
     await executeBtn.click();
 
