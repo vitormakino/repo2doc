@@ -17,6 +17,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { SourceType, ProcessingOptions, DocFile, CommitInfo, DocState } from './types';
+import { parseRepoUrl, generateMarkdown } from './lib/utils';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import JSZip from 'jszip';
@@ -44,14 +45,6 @@ export default function App() {
     organizationStrategy: 'folder',
     formats: ['markdown', 'html'],
   });
-
-  const parseRepoUrl = (url: string) => {
-    try {
-      const match = url.match(/github\.com\/([^/]+)\/([^/]+)/);
-      if (match) return { owner: match[1], repo: match[2].replace('.git', '') };
-    } catch (e) {}
-    return null;
-  };
 
   const fetchGithubRepo = async (owner: string, repo: string, path: string = ''): Promise<DocFile[]> => {
     const res = await fetch(`/api/github/repo?owner=${owner}&repo=${repo}&path=${path}`);
@@ -183,50 +176,10 @@ export default function App() {
     }
   };
 
-  const generateMarkdown = () => {
-    if (!result) return '';
-    let md = `# ${result.title}\n\n`;
-    
-    if (options.generateIndex) {
-      md += `## Table of Contents\n\n`;
-      result.files.forEach(f => {
-        md += `* [${f.path}](#${f.path.toLowerCase().replace(/[^a-z0-9]/g, '-')})\n`;
-      });
-      md += `\n---\n\n`;
-    }
-
-    result.files.forEach(f => {
-      md += `<a name="${f.path.toLowerCase().replace(/[^a-z0-9]/g, '-')}"></a>\n`;
-      md += `## Section: ${f.path}\n\n`;
-      
-      if (options.llmOptimized) {
-        md += `<context path="${f.path}">\n`;
-        if (f.summary) md += `<summary>${f.summary}</summary>\n`;
-        md += `<content>\n${f.content}\n</content>\n`;
-        md += `</context>\n\n`;
-      } else {
-        if (f.summary) {
-          md += `> **AI Summary:** ${f.summary}\n\n`;
-        }
-        md += f.content + '\n\n---\n\n';
-      }
-    });
-
-    if (options.includeHistory && result.history.length > 0) {
-      md += `## Version History\n\n`;
-      result.history.forEach(c => {
-        md += `### Commit [${c.sha}]\n`;
-        md += `* **Message:** ${c.message}\n`;
-        md += `* **Author:** ${c.author}\n`;
-        md += `* **Date:** ${c.date}\n\n`;
-      });
-    }
-
-    return md;
-  };
+  const generateMarkdownStr = () => generateMarkdown(result, options);
 
   const generateHtml = () => {
-    const md = generateMarkdown();
+    const md = generateMarkdownStr();
     // Simplified markdown to HTML rendering for download
     // In a real app we'd use a library, but here we can wrap it in a pretty shell
     return `
@@ -443,7 +396,7 @@ export default function App() {
                       className="flex-1 overflow-y-auto pr-4 font-mono text-xs text-[#1A1A1A]/80 leading-relaxed prose prose-slate max-w-none prose-headings:font-serif prose-headings:italic font-mono"
                     >
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {generateMarkdown()}
+                        {generateMarkdownStr()}
                       </ReactMarkdown>
                     </motion.div>
                   ) : error ? (
