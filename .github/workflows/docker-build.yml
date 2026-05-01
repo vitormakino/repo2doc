@@ -28,6 +28,11 @@ jobs:
       - name: Run Tests
         run: npm test
 
+      - name: Run E2E Tests
+        run: |
+          npx playwright install --with-deps chromium
+          npm run test:e2e
+
       - name: Lint
         run: npm run lint
 
