@@ -1,5 +1,13 @@
 export type SourceType = 'local' | 'remote';
 
+export interface DocSource {
+  id: string;
+  type: SourceType;
+  url?: string;
+  files?: File[]; // For local folder selection
+  label: string;
+}
+
 export interface DocFile {
   path: string;
   name: string;

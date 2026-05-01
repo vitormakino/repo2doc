@@ -44,13 +44,29 @@ test.describe('RepoDoc Core Flow', () => {
     const input = page.getByPlaceholder('https://github.com/owner/repo');
     await input.fill('https://github.com/invalid/repo');
     
+    // Add the source first
+    await page.locator('button:has(svg)').last().click(); // Click the plus button
+    await expect(page.getByText('invalid/repo')).toBeVisible();
+
     const executeBtn = page.getByRole('button', { name: 'Execute Generator' });
     await executeBtn.click();
 
-    // Since we are mocking in unit tests but e2e hits the real local server, 
-    // it will try to hit the /api/github/repo endpoint.
-    // In a real E2E we might want to mock the API or have a test repo.
-    // For now, we're just checking if the "Processing" state appears.
     await expect(page.getByText('Pipeline Interrupted').or(page.getByText('System actively processing'))).toBeVisible();
+  });
+
+  test('should allow cancelling the process', async ({ page }) => {
+    const input = page.getByPlaceholder('https://github.com/owner/repo');
+    await input.fill('https://github.com/vitor-makino/repodoc'); // use a real-ish looking one
+    await page.locator('button:has(svg)').last().click();
+    
+    const executeBtn = page.getByRole('button', { name: 'Execute Generator' });
+    await executeBtn.click();
+
+    const cancelBtn = page.getByRole('button', { name: 'Cancel Generation' });
+    await expect(cancelBtn).toBeVisible();
+    await cancelBtn.click();
+
+    await expect(page.getByText('Operation Stopped')).toBeVisible();
+    await expect(page.getByText('Operation cancelled by user')).toBeVisible();
   });
 });

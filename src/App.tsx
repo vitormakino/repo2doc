@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import { 
   FolderPlus, 
   Github, 
@@ -11,12 +11,15 @@ import {
   AlertCircle,
   Loader2,
   ChevronRight,
-  Eye
+  Eye,
+  Plus,
+  Trash2,
+  XCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { SourceType, ProcessingOptions, DocFile, CommitInfo, DocState } from './types';
+import { SourceType, ProcessingOptions, DocFile, CommitInfo, DocState, DocSource } from './types';
 import { parseRepoUrl, generateMarkdown } from './lib/utils';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -32,7 +35,9 @@ export default function App() {
   
   const [sourceType, setSourceType] = useState<SourceType>('remote');
   const [repoUrl, setRepoUrl] = useState('');
+  const [sources, setSources] = useState<DocSource[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const isCancelled = useRef(false);
   const [progress, setProgress] = useState('');
   const [result, setResult] = useState<DocState | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +51,54 @@ export default function App() {
     formats: ['markdown', 'html'],
   });
 
+  const addSource = () => {
+    if (sourceType === 'remote') {
+      const repoData = parseRepoUrl(repoUrl);
+      if (!repoData) {
+        setError('Invalid GitHub URL. Example: https://github.com/owner/repo');
+        return;
+      }
+      const newSource: DocSource = {
+        id: Math.random().toString(36).substring(7),
+        type: 'remote',
+        url: repoUrl,
+        label: `${repoData.owner}/${repoData.repo}`
+      };
+      setSources(prev => [...prev, newSource]);
+      setRepoUrl('');
+      setError(null);
+    } else {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.webkitdirectory = true;
+      input.onchange = (e: any) => {
+        const files = Array.from(e.target.files) as File[];
+        if (files.length > 0) {
+          const folderName = files[0].webkitRelativePath.split('/')[0] || 'Local Project';
+          const newSource: DocSource = {
+            id: Math.random().toString(36).substring(7),
+            type: 'local',
+            files,
+            label: folderName
+          };
+          setSources(prev => [...prev, newSource]);
+        }
+      };
+      input.click();
+    }
+  };
+
+  const removeSource = (id: string) => {
+    setSources(prev => prev.filter(s => s.id !== id));
+  };
+
+  const cancelProcessing = () => {
+    isCancelled.current = true;
+    setProgress('Cancelling...');
+  };
+
   const fetchGithubRepo = async (owner: string, repo: string, path: string = ''): Promise<DocFile[]> => {
+    if (isCancelled.current) throw new Error('Operation cancelled by user');
     const res = await fetch(`/api/github/repo?owner=${owner}&repo=${repo}&path=${path}`);
     if (!res.ok) throw new Error(`Failed to fetch ${path || 'repo'}`);
     const data = await res.json();
@@ -55,11 +107,11 @@ export default function App() {
     const items = Array.isArray(data) ? data : [data];
 
     for (const item of items) {
+      if (isCancelled.current) throw new Error('Operation cancelled by user');
       if (item.type === 'dir') {
         const subFiles = await fetchGithubRepo(owner, repo, item.path);
         files.push(...subFiles);
       } else if (item.name.match(/\.(md|txt|adoc|markdown)$/i)) {
-        // Fetch content for doc files
         const contentRes = await fetch(item.download_url);
         const content = await contentRes.text();
         files.push({
@@ -74,6 +126,7 @@ export default function App() {
   };
 
   const fetchGithubHistory = async (owner: string, repo: string): Promise<CommitInfo[]> => {
+    if (isCancelled.current) return [];
     const res = await fetch(`/api/github/commits?owner=${owner}&repo=${repo}`);
     if (!res.ok) return [];
     const data = await res.json();
@@ -86,6 +139,7 @@ export default function App() {
   };
 
   const summarizeFile = async (file: DocFile): Promise<string> => {
+    if (isCancelled.current) return '';
     try {
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
@@ -104,75 +158,85 @@ export default function App() {
 
   const handleProcess = async () => {
     setIsProcessing(true);
+    isCancelled.current = false;
     setError(null);
     setResult(null);
     setProgress('Initializing...');
 
     try {
-      let files: DocFile[] = [];
-      let history: CommitInfo[] = [];
-      let title = 'Repository Documentation';
+      let allFiles: DocFile[] = [];
+      let allHistory: CommitInfo[] = [];
+      let titles = sources.map(s => s.label);
+      const mainTitle = titles.length > 1 ? `Multi-Repo Doc (${sources.length} sources)` : (titles[0] || 'Repository Documentation');
 
-      if (sourceType === 'remote') {
-        const repoData = parseRepoUrl(repoUrl);
-        if (!repoData) throw new Error('Invalid GitHub URL. Example: https://github.com/owner/repo');
-        
-        title = `${repoData.owner}/${repoData.repo}`;
-        setProgress(`Fetching ${title}...`);
-        files = await fetchGithubRepo(repoData.owner, repoData.repo);
-        
-        if (options.includeHistory) {
-          setProgress('Extracting commit history...');
-          history = await fetchGithubHistory(repoData.owner, repoData.repo);
-        }
-      } else {
-        // Local files handled via hidden input
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.webkitdirectory = true;
-        
-        const filesPromise = new Promise<File[]>((resolve) => {
-          input.onchange = (e: any) => resolve(Array.from(e.target.files));
-        });
-        
-        input.click();
-        const selectedFiles = await filesPromise;
-        
-        setProgress(`Reading ${selectedFiles.length} files...`);
-        for (const file of selectedFiles) {
-          if (file.name.match(/\.(md|txt|adoc|markdown)$/i)) {
-            files.push({
-              path: file.webkitRelativePath || file.name,
-              name: file.name,
-              content: await file.text(),
-              type: 'file'
-            });
+      for (const source of sources) {
+        if (isCancelled.current) break;
+
+        if (source.type === 'remote') {
+          const repoData = parseRepoUrl(source.url || '');
+          if (!repoData) continue;
+          
+          setProgress(`Fetching ${source.label}...`);
+          const sourceFiles = await fetchGithubRepo(repoData.owner, repoData.repo);
+          // Add prefix to paths if multiple sources
+          const processedFiles = sourceFiles.map(f => ({
+            ...f,
+            path: sources.length > 1 ? `${source.label}/${f.path}` : f.path
+          }));
+          allFiles.push(...processedFiles);
+          
+          if (options.includeHistory) {
+            setProgress(`Extracting history for ${source.label}...`);
+            const sourceHistory = await fetchGithubHistory(repoData.owner, repoData.repo);
+            allHistory.push(...sourceHistory);
+          }
+        } else if (source.files) {
+          setProgress(`Reading files from ${source.label}...`);
+          for (const file of source.files) {
+            if (isCancelled.current) break;
+            if (file.name.match(/\.(md|txt|adoc|markdown)$/i)) {
+              allFiles.push({
+                path: sources.length > 1 ? `${source.label}/${file.webkitRelativePath || file.name}` : (file.webkitRelativePath || file.name),
+                name: file.name,
+                content: await file.text(),
+                type: 'file'
+              });
+            }
           }
         }
-        title = selectedFiles[0]?.webkitRelativePath.split('/')[0] || 'Local Project';
       }
 
-      if (files.length === 0) throw new Error('No documentation files found.');
+      if (isCancelled.current) {
+        throw new Error('Operation cancelled by user');
+      }
+
+      if (allFiles.length === 0) throw new Error('No documentation files found.');
 
       if (options.generateSummaries) {
         setProgress('Generating AI summaries...');
-        for (let i = 0; i < files.length; i++) {
-          setProgress(`Summarizing ${files[i].name} (${i + 1}/${files.length})...`);
-          files[i].summary = await summarizeFile(files[i]);
+        for (let i = 0; i < allFiles.length; i++) {
+          if (isCancelled.current) break;
+          setProgress(`Summarizing ${allFiles[i].name} (${i + 1}/${allFiles.length})...`);
+          allFiles[i].summary = await summarizeFile(allFiles[i]);
         }
       }
 
+      if (isCancelled.current) {
+        throw new Error('Operation cancelled by user');
+      }
+
       setResult({
-        title,
-        files,
-        history,
-        toc: files.map(f => f.path)
+        title: mainTitle,
+        files: allFiles,
+        history: allHistory,
+        toc: allFiles.map(f => f.path)
       });
       setProgress('Generation complete!');
     } catch (err: any) {
       setError(err.message);
     } finally {
       setIsProcessing(false);
+      isCancelled.current = false;
     }
   };
 
@@ -180,8 +244,6 @@ export default function App() {
 
   const generateHtml = () => {
     const md = generateMarkdownStr();
-    // Simplified markdown to HTML rendering for download
-    // In a real app we'd use a library, but here we can wrap it in a pretty shell
     return `
       <!DOCTYPE html>
       <html>
@@ -191,12 +253,12 @@ export default function App() {
           <title>${result?.title} Documentation</title>
           <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
           <style>
-            body { background: #0f172a; color: #f8fafc; }
-            .prose { max-width: 65ch; margin: 0 auto; padding: 4rem 2rem; }
-            a { color: #818cf8; }
+            body { background: #FCFAF7; color: #1A1A1A; }
+            .prose { max-width: 800px; margin: 0 auto; padding: 4rem 2rem; }
+            a { color: #1A1A1A; font-weight: bold; }
           </style>
         </head>
-        <body class="prose prose-invert lg:prose-xl">
+        <body class="prose lg:prose-xl">
           ${md.replace(/# (.*)/g, '<h1>$1</h1>').replace(/## (.*)/g, '<h2>$1</h2>')}
           <p><em>Generated by RepoDoc</em></p>
         </body>
@@ -216,7 +278,6 @@ export default function App() {
 
   return (
     <div id="repo-doc-app" className="min-h-screen bg-[#FCFAF7] text-[#1A1A1A] font-serif flex flex-col">
-      {/* Top Header Bar */}
       <header className="border-b border-[#1A1A1A] h-20 flex items-center justify-between px-12 shrink-0">
         <div className="text-3xl font-black uppercase tracking-tighter italic flex items-center gap-3">
           RepoDoc 
@@ -232,14 +293,40 @@ export default function App() {
       </header>
 
       <main className="flex-1 grid grid-cols-12 overflow-hidden">
-        {/* Sidebar: Input & Config */}
         <section className="col-span-12 lg:col-span-3 border-r border-[#1A1A1A] p-8 flex flex-col gap-10 overflow-y-auto">
           <div>
-            <label className="font-sans text-[10px] uppercase tracking-[0.3em] font-black opacity-40 block mb-6">Input Source</label>
+            <label className="font-sans text-[10px] uppercase tracking-[0.3em] font-black opacity-40 block mb-6">Sources Pool</label>
+            
+            <AnimatePresence>
+              {sources.length > 0 && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="mb-6 space-y-2 max-h-48 overflow-y-auto pr-2"
+                >
+                  {sources.map((source) => (
+                    <div key={source.id} className="flex items-center justify-between p-3 bg-[#1A1A1A]/5 rounded-sm group">
+                      <div className="flex items-center gap-3 overflow-hidden">
+                        {source.type === 'remote' ? <Github className="w-3 h-3 shrink-0" /> : <FolderPlus className="w-3 h-3 shrink-0" />}
+                        <span className="font-sans text-[10px] font-black uppercase truncate">{source.label}</span>
+                      </div>
+                      {!isProcessing && (
+                        <button onClick={() => removeSource(source.id)} className="opacity-0 group-hover:opacity-100 transition-opacity text-red-500">
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             <div className="flex gap-2 p-1 bg-[#1A1A1A]/5 rounded-sm mb-6">
               {(['remote', 'local'] as SourceType[]).map((type) => (
                 <button
                   key={type}
+                  disabled={isProcessing}
                   onClick={() => setSourceType(type)}
                   className={cn(
                     "flex-1 flex items-center justify-center gap-2 py-3 px-3 text-[10px] font-sans uppercase font-bold tracking-wider transition-all",
@@ -256,23 +343,35 @@ export default function App() {
 
             {sourceType === 'remote' ? (
               <div className="space-y-4">
-                <input
-                  type="text"
-                  value={repoUrl}
-                  onChange={(e) => setRepoUrl(e.target.value)}
-                  placeholder="https://github.com/owner/repo"
-                  className="w-full bg-transparent border-b border-[#1A1A1A] py-3 font-serif text-lg italic focus:outline-none placeholder:opacity-20 transition-all"
-                />
-                <p className="text-[10px] font-sans font-medium opacity-40 italic">Input valid GitHub repository URL</p>
+                <div className="relative">
+                  <input
+                    disabled={isProcessing}
+                    type="text"
+                    value={repoUrl}
+                    onChange={(e) => setRepoUrl(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && addSource()}
+                    placeholder="https://github.com/owner/repo"
+                    className="w-full bg-transparent border-b border-[#1A1A1A] py-3 font-serif text-lg italic focus:outline-none placeholder:opacity-20 transition-all pr-10"
+                  />
+                  <button 
+                    disabled={isProcessing || !repoUrl}
+                    onClick={addSource} 
+                    className="absolute right-0 bottom-3 opacity-40 hover:opacity-100 disabled:hidden"
+                  >
+                    <Plus className="w-5 h-5" />
+                  </button>
+                </div>
+                <p className="text-[10px] font-sans font-medium opacity-40 italic">Add GitHub repositories to the pool</p>
               </div>
             ) : (
-              <div 
-                className="p-8 border border-dashed border-[#1A1A1A] text-center hover:bg-[#1A1A1A] hover:text-white transition-all cursor-pointer group" 
-                onClick={handleProcess}
+              <button 
+                disabled={isProcessing}
+                className="w-full p-8 border border-dashed border-[#1A1A1A] text-center hover:bg-[#1A1A1A] hover:text-white transition-all cursor-pointer group flex flex-col items-center disabled:opacity-30 disabled:cursor-not-allowed" 
+                onClick={addSource}
               >
                 <FolderPlus className="w-8 h-8 mx-auto mb-3 opacity-30 group-hover:opacity-100" />
                 <p className="text-[10px] font-sans uppercase font-bold tracking-widest">Select Folder</p>
-              </div>
+              </button>
             )}
           </div>
 
@@ -291,6 +390,7 @@ export default function App() {
                   </span>
                   <div className="relative">
                     <input
+                      disabled={isProcessing}
                       type="checkbox"
                       checked={!!options[opt.id as keyof ProcessingOptions]}
                       onChange={(e) => setOptions({ ...options, [opt.id]: e.target.checked })}
@@ -310,22 +410,31 @@ export default function App() {
           </div>
 
           <div className="mt-auto pt-8">
-            <button
-              disabled={isProcessing || (sourceType === 'remote' && !repoUrl)}
-              onClick={handleProcess}
-              className={cn(
-                "w-full py-6 border-2 border-[#1A1A1A] font-sans font-black uppercase tracking-[0.2em] text-sm transition-all duration-300",
-                isProcessing 
-                  ? "opacity-50 cursor-not-allowed" 
-                  : "hover:bg-[#1A1A1A] hover:text-[#FCFAF7] shadow-[8px_8px_0px_0px_rgba(26,26,26,0.1)] active:translate-x-1 active:translate-y-1 active:shadow-none"
-              )}
-            >
-              {isProcessing ? 'Processing' : 'Execute Generator'}
-            </button>
+            {isProcessing ? (
+              <button
+                onClick={cancelProcessing}
+                className="w-full py-6 border-2 border-red-500 text-red-500 font-sans font-black uppercase tracking-[0.2em] text-sm hover:bg-red-500 hover:text-white transition-all flex items-center justify-center gap-2"
+              >
+                <XCircle className="w-4 h-4" />
+                Cancel Generation
+              </button>
+            ) : (
+              <button
+                disabled={sources.length === 0}
+                onClick={handleProcess}
+                className={cn(
+                  "w-full py-6 border-2 border-[#1A1A1A] font-sans font-black uppercase tracking-[0.2em] text-sm transition-all duration-300",
+                  sources.length === 0 
+                    ? "opacity-50 cursor-not-allowed" 
+                    : "hover:bg-[#1A1A1A] hover:text-[#FCFAF7] shadow-[8px_8px_0px_0px_rgba(26,26,26,0.1)] active:translate-x-1 active:translate-y-1 active:shadow-none"
+                )}
+              >
+                Execute Generator
+              </button>
+            )}
           </div>
         </section>
 
-        {/* Main Body */}
         <section className="col-span-12 lg:col-span-9 p-12 flex flex-col overflow-y-auto">
           <div className="flex flex-col lg:flex-row justify-between items-start gap-8 mb-16">
             <div className="max-w-xl">
@@ -341,7 +450,7 @@ export default function App() {
             <div className="text-right">
               <label className="font-sans text-[10px] uppercase tracking-[0.3em] font-black opacity-40 block mb-4 text-right">Available Exports</label>
               <div className="flex flex-col items-end gap-3 font-serif italic font-black text-3xl uppercase tracking-tighter">
-                <button onClick={() => result && downloadFile(generateMarkdown(), 'docs.md', 'text/markdown')} className={cn("transition-opacity", result ? "opacity-100 hover:opacity-60" : "opacity-10")}>Markdown</button>
+                <button onClick={() => result && downloadFile(generateMarkdownStr(), 'docs.md', 'text/markdown')} className={cn("transition-opacity", result ? "opacity-100 hover:opacity-60" : "opacity-10")}>Markdown</button>
                 <button onClick={() => result && downloadFile(generateHtml(), 'docs.html', 'text/html')} className={cn("transition-opacity", result ? "opacity-100 hover:opacity-60" : "opacity-10")}>HTML View</button>
                 <button onClick={() => result && downloadFile(JSON.stringify(result), 'docs.json', 'application/json')} className={cn("transition-opacity", result ? "opacity-100 hover:opacity-60" : "opacity-10")}>JSON Data</button>
               </div>
@@ -366,9 +475,7 @@ export default function App() {
             ))}
           </div>
 
-          {/* Preview Pane */}
           <div className="flex-1 min-h-[400px] flex flex-col relative group">
-             {/* Decorative Box Shadow */}
              <div className="absolute inset-x-0 bottom-0 top-0 bg-white border border-[#1A1A1A] shadow-[16px_16px_0px_0px_rgba(26,26,26,0.03)] pointer-events-none"></div>
              
              <div className="relative flex-1 p-10 flex flex-col overflow-hidden bg-white mt-4 mx-4 mb-4 border border-[#1A1A1A]">
@@ -404,9 +511,11 @@ export default function App() {
                       key="error"
                       className="flex-1 flex flex-col items-center justify-center text-center"
                     >
-                      <div className="text-red-500 font-serif italic text-xl mb-4">Pipeline Interrupted</div>
-                      <div className="font-sans text-[10px] uppercase font-black opacity-30 border border-red-500/20 px-4 py-2">{error}</div>
-                      <button onClick={() => setError(null)} className="mt-8 font-sans text-[10px] uppercase font-black underline underline-offset-4">Retry Operation</button>
+                      <div className={cn("font-serif italic text-xl mb-4", error.includes('cancelled') ? "text-[#1A1A1A]/60" : "text-red-500")}>
+                        {error.includes('cancelled') ? 'Operation Stopped' : 'Pipeline Interrupted'}
+                      </div>
+                      <div className="font-sans text-[10px] uppercase font-black opacity-30 border border-[#1A1A1A]/20 px-4 py-2">{error}</div>
+                      <button onClick={() => setError(null)} className="mt-8 font-sans text-[10px] uppercase font-black underline underline-offset-4">Reset View</button>
                     </motion.div>
                   ) : (
                     <motion.div 
@@ -419,7 +528,6 @@ export default function App() {
                   )}
                 </AnimatePresence>
 
-                {/* Gradient Fade for Preview */}
                 {!isProcessing && result && (
                   <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
                 )}
@@ -428,7 +536,6 @@ export default function App() {
         </section>
       </main>
 
-      {/* Footer */}
       <footer className="h-14 border-t border-[#1A1A1A] flex items-center justify-between px-12 font-sans text-[9px] uppercase tracking-[0.3em] font-black opacity-40 shrink-0">
         <div className="flex gap-8">
           <span>Session: {Math.random().toString(36).substring(7).toUpperCase()}</span>
