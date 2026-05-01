@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { 
   FolderPlus, 
   Github, 
@@ -20,12 +20,15 @@ import { SourceType, ProcessingOptions, DocFile, CommitInfo, DocState } from './
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import JSZip from 'jszip';
+import { GoogleGenAI } from "@google/genai";
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
 export default function App() {
+  const ai = useMemo(() => new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" }), []);
+  
   const [sourceType, setSourceType] = useState<SourceType>('remote');
   const [repoUrl, setRepoUrl] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -91,15 +94,17 @@ export default function App() {
 
   const summarizeFile = async (file: DocFile): Promise<string> => {
     try {
-      const res = await fetch('/api/summarize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: file.content, filename: file.name })
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: `Summarize the following documentation file named "${file.name}". 
+        Focus on key features, installation steps, and usage. Keep it concise.
+      
+        Content:
+        ${file.content.substring(0, 10000)}`
       });
-      if (!res.ok) return '';
-      const data = await res.json();
-      return data.summary;
+      return response.text || "";
     } catch (e) {
+      console.error("Summarization error:", e);
       return '';
     }
   };

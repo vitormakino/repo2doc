@@ -2,7 +2,6 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
 import { Octokit } from "@octokit/rest";
-import { GoogleGenerativeAI } from "@google/genai";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -12,32 +11,8 @@ const PORT = 3000;
 
 app.use(express.json({ limit: '50mb' }));
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 const octokit = new Octokit({
   auth: process.env.GITHUB_TOKEN
-});
-
-// AI Summarization Route
-app.post("/api/summarize", async (req, res) => {
-  try {
-    const { content, filename } = req.body;
-    if (!process.env.GEMINI_API_KEY) {
-      return res.status(500).json({ error: "Gemini API Key not configured" });
-    }
-
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-    const prompt = `Summarize the following documentation file named "${filename}". 
-    Focus on key features, installation steps, and usage. Keep it concise.
-    
-    Content:
-    ${content.substring(0, 10000)}`; // Basic truncation for safety
-
-    const result = await model.generateContent(prompt);
-    res.json({ summary: result.response.text() });
-  } catch (error: any) {
-    console.error("Summarization error:", error);
-    res.status(500).json({ error: error.message });
-  }
 });
 
 // GitHub Content Fetching
