@@ -71,9 +71,29 @@ export default function App() {
     if (sourceType === 'remote') {
       if (!repoUrl) return;
       // Allow both owner/repo and full URL
-      const normalizedUrl = repoUrl.includes('github.com/')
-        ? repoUrl
-        : `https://github.com/${repoUrl}`;
+      const rawInput = repoUrl.trim();
+      let normalizedUrl: string;
+
+      if (/^https?:\/\//i.test(rawInput)) {
+        try {
+          const parsed = new URL(rawInput);
+          const hostname = parsed.hostname.toLowerCase();
+          if (parsed.protocol !== 'https:' || (hostname !== 'github.com' && hostname !== 'www.github.com')) {
+            setError('Invalid GitHub URL. Example: https://github.com/owner/repo');
+            return;
+          }
+          if (hostname === 'www.github.com') {
+            parsed.hostname = 'github.com';
+          }
+          normalizedUrl = parsed.toString();
+        } catch {
+          setError('Invalid GitHub URL. Example: https://github.com/owner/repo');
+          return;
+        }
+      } else {
+        normalizedUrl = `https://github.com/${rawInput}`;
+      }
+
       const repoData = parseRepoUrl(normalizedUrl);
       if (!repoData) {
         setError('Invalid GitHub URL. Example: https://github.com/owner/repo');
