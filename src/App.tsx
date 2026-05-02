@@ -7,6 +7,10 @@ import {
   Plus,
   Trash2,
   XCircle,
+  Sun,
+  Moon,
+  Coffee,
+  Trees,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -21,9 +25,12 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+type Theme = 'light' | 'dark' | 'solarized' | 'everforest';
+
 export default function App() {
   const ai = useMemo(() => new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' }), []);
 
+  const [theme, setTheme] = useState<Theme>('light');
   const [sourceType, setSourceType] = useState<SourceType>('remote');
   const [repoUrl, setRepoUrl] = useState('');
   const [sources, setSources] = useState<DocSource[]>([]);
@@ -126,12 +133,17 @@ export default function App() {
     const res = await fetch(`/api/github/commits?owner=${owner}&repo=${repo}`);
     if (!res.ok) return [];
     const data = await res.json();
-    return data.map((c: { sha: string; commit: { message: string; author: { name: string; date: string } } }) => ({
-      sha: c.sha.substring(0, 7),
-      message: c.commit.message,
-      author: c.commit.author.name,
-      date: new Date(c.commit.author.date).toLocaleDateString(),
-    }));
+    return data.map(
+      (c: {
+        sha: string;
+        commit: { message: string; author: { name: string; date: string } };
+      }) => ({
+        sha: c.sha.substring(0, 7),
+        message: c.commit.message,
+        author: c.commit.author.name,
+        date: new Date(c.commit.author.date).toLocaleDateString(),
+      }),
+    );
   };
 
   const summarizeFile = async (file: DocFile): Promise<string> => {
@@ -256,9 +268,9 @@ export default function App() {
           <title>${result?.title} Documentation</title>
           <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
           <style>
-            body { background: #FCFAF7; color: #1A1A1A; }
+            body { background: var(--bg, #FCFAF7); color: var(--fg, #1A1A1A); }
             .prose { max-width: 800px; margin: 0 auto; padding: 4rem 2rem; }
-            a { color: #1A1A1A; font-weight: bold; }
+            a { color: var(--fg, #1A1A1A); font-weight: bold; }
           </style>
         </head>
         <body class="prose lg:prose-xl">
@@ -282,34 +294,57 @@ export default function App() {
   const [sessionId] = useState(() => Math.random().toString(36).substring(7).toUpperCase());
 
   return (
-    <div
-      id="repo-doc-app"
-      className="min-h-screen bg-[#FCFAF7] text-[#1A1A1A] font-serif flex flex-col"
-    >
-      <header className="border-b border-[#1A1A1A] h-20 flex items-center justify-between px-12 shrink-0">
+    <div id="repo-doc-app" data-theme={theme} className="min-h-screen flex flex-col">
+      <header className="border-b border-theme-border h-20 flex items-center justify-between px-12 shrink-0">
         <div className="text-3xl font-black uppercase tracking-tighter italic flex items-center gap-3">
           RepoDoc
-          <span className="text-[10px] font-sans font-bold not-italic tracking-[0.2em] border border-[#1A1A1A] px-2 py-0.5 mt-1 opacity-60">
+          <span className="text-[10px] font-sans font-bold not-italic tracking-[0.2em] border border-theme-border px-2 py-0.5 mt-1 opacity-60">
             v1.0
           </span>
         </div>
-        <div className="flex gap-12 font-sans text-[10px] uppercase tracking-[0.2em] font-bold">
-          <a href="#" className="opacity-40 hover:opacity-100 transition-opacity">
-            Repository
-          </a>
-          <a href="#" className="opacity-40 hover:opacity-100 transition-opacity">
-            History
-          </a>
-          <a href="#" className="opacity-40 hover:opacity-100 transition-opacity">
-            Export
-          </a>
+
+        <div className="flex items-center gap-8">
+          <div className="flex gap-2 p-1 bg-theme-fg/5 rounded-full">
+            {(
+              [
+                { id: 'light', icon: Sun },
+                { id: 'dark', icon: Moon },
+                { id: 'solarized', icon: Coffee },
+                { id: 'everforest', icon: Trees },
+              ] as const
+            ).map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setTheme(t.id)}
+                className={cn(
+                  'p-1.5 rounded-full transition-all',
+                  theme === t.id ? 'bg-theme-fg text-theme-bg shadow-lg' : 'opacity-40 hover:opacity-100',
+                )}
+                title={t.id}
+              >
+                <t.icon className="w-3.5 h-3.5" />
+              </button>
+            ))}
+          </div>
+
+          <div className="flex gap-12 font-sans text-[10px] uppercase tracking-[0.2em] font-bold">
+            <a href="#" className="opacity-40 hover:opacity-100 transition-opacity">
+              Repository
+            </a>
+            <a href="#" className="opacity-40 hover:opacity-100 transition-opacity">
+              History
+            </a>
+            <a href="#" className="opacity-40 hover:opacity-100 transition-opacity">
+              Export
+            </a>
+          </div>
         </div>
       </header>
 
       <main className="flex-1 grid grid-cols-12 overflow-hidden">
-        <section className="col-span-12 lg:col-span-3 border-r border-[#1A1A1A] p-8 flex flex-col gap-10 overflow-y-auto">
+        <section className="col-span-12 lg:col-span-3 border-r border-theme-border p-8 flex flex-col gap-10 overflow-y-auto">
           <div>
-            <label className="font-sans text-[10px] uppercase tracking-[0.3em] font-black opacity-40 block mb-6">
+            <label className="font-sans text-[10px] uppercase tracking-[0.3em] font-black opacity-40 block mb-6 text-theme-fg">
               Sources Pool
             </label>
 
@@ -324,7 +359,7 @@ export default function App() {
                   {sources.map((source) => (
                     <div
                       key={source.id}
-                      className="flex items-center justify-between p-3 bg-[#1A1A1A]/5 rounded-sm group"
+                      className="flex items-center justify-between p-3 bg-theme-fg/5 rounded-sm group"
                     >
                       <div className="flex items-center gap-3 overflow-hidden">
                         {source.type === 'remote' ? (
@@ -350,7 +385,7 @@ export default function App() {
               )}
             </AnimatePresence>
 
-            <div className="flex gap-2 p-1 bg-[#1A1A1A]/5 rounded-sm mb-6">
+            <div className="flex gap-2 p-1 bg-theme-fg/5 rounded-sm mb-6">
               {(['remote', 'local'] as SourceType[]).map((type) => (
                 <button
                   key={type}
@@ -359,8 +394,8 @@ export default function App() {
                   className={cn(
                     'flex-1 flex items-center justify-center gap-2 py-3 px-3 text-[10px] font-sans uppercase font-bold tracking-wider transition-all',
                     sourceType === type
-                      ? 'bg-[#1A1A1A] text-white'
-                      : 'text-[#1A1A1A] opacity-30 hover:opacity-50',
+                      ? 'bg-theme-fg text-theme-bg'
+                      : 'text-theme-fg opacity-30 hover:opacity-50',
                   )}
                 >
                   {type === 'remote' ? (
@@ -383,7 +418,7 @@ export default function App() {
                     onChange={(e) => setRepoUrl(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && addSource()}
                     placeholder="https://github.com/owner/repo"
-                    className="w-full bg-transparent border-b border-[#1A1A1A] py-3 font-serif text-lg italic focus:outline-none placeholder:opacity-20 transition-all pr-10"
+                    className="w-full bg-transparent border-b border-theme-border py-3 font-serif text-lg italic focus:outline-none placeholder:opacity-20 transition-all pr-10"
                   />
                   <button
                     disabled={isProcessing || !repoUrl}
@@ -400,7 +435,7 @@ export default function App() {
             ) : (
               <button
                 disabled={isProcessing}
-                className="w-full p-8 border border-dashed border-[#1A1A1A] text-center hover:bg-[#1A1A1A] hover:text-white transition-all cursor-pointer group flex flex-col items-center disabled:opacity-30 disabled:cursor-not-allowed"
+                className="w-full p-8 border border-dashed border-theme-border text-center hover:bg-theme-fg hover:text-theme-bg transition-all cursor-pointer group flex flex-col items-center disabled:opacity-30 disabled:cursor-not-allowed"
                 onClick={addSource}
               >
                 <FolderPlus className="w-8 h-8 mx-auto mb-3 opacity-30 group-hover:opacity-100" />
@@ -424,7 +459,7 @@ export default function App() {
               ].map((opt) => (
                 <label
                   key={opt.id}
-                  className="flex items-center justify-between font-sans text-xs font-bold tracking-tight cursor-pointer py-2 border-b border-[#1A1A1A]/5 hover:bg-[#1A1A1A]/5 px-2 -mx-2 transition-colors"
+                  className="flex items-center justify-between font-sans text-xs font-bold tracking-tight cursor-pointer py-2 border-b border-theme-border/5 hover:bg-theme-fg/5 px-2 -mx-2 transition-colors"
                 >
                   <span
                     className={cn(
@@ -441,13 +476,11 @@ export default function App() {
                       onChange={(e) => setOptions({ ...options, [opt.id]: e.target.checked })}
                       className="sr-only peer"
                     />
-                    <div className="w-8 h-4 bg-transparent border border-[#1A1A1A] rounded-full transition-colors peer-checked:bg-[#1A1A1A]"></div>
+                    <div className="w-8 h-4 bg-transparent border border-theme-border rounded-full transition-colors peer-checked:bg-theme-fg"></div>
                     <div
                       className={cn(
                         'absolute top-1 w-2 h-2 rounded-full transition-all',
-                        options[opt.id as keyof ProcessingOptions]
-                          ? 'right-1 bg-white'
-                          : 'left-1 bg-[#1A1A1A]',
+                        options[opt.id as keyof ProcessingOptions] ? 'right-1 bg-theme-bg' : 'left-1 bg-theme-fg',
                       )}
                     ></div>
                   </div>
@@ -470,10 +503,10 @@ export default function App() {
                 disabled={sources.length === 0}
                 onClick={handleProcess}
                 className={cn(
-                  'w-full py-6 border-2 border-[#1A1A1A] font-sans font-black uppercase tracking-[0.2em] text-sm transition-all duration-300',
+                  'w-full py-6 border-2 border-theme-border font-sans font-black uppercase tracking-[0.2em] text-sm transition-all duration-300',
                   sources.length === 0
                     ? 'opacity-50 cursor-not-allowed'
-                    : 'hover:bg-[#1A1A1A] hover:text-[#FCFAF7] shadow-[8px_8px_0px_0px_rgba(26,26,26,0.1)] active:translate-x-1 active:translate-y-1 active:shadow-none',
+                    : 'hover:bg-theme-fg hover:text-theme-bg shadow-[8px_8px_0px_0px_var(--border-shadow)] active:translate-x-1 active:translate-y-1 active:shadow-none',
                 )}
               >
                 Execute Generator
@@ -485,12 +518,12 @@ export default function App() {
         <section className="col-span-12 lg:col-span-9 p-12 flex flex-col overflow-y-auto">
           <div className="flex flex-col lg:flex-row justify-between items-start gap-8 mb-16">
             <div className="max-w-xl">
-              <h1 className="text-7xl font-bold leading-[0.85] tracking-tighter mb-4">
+              <h1 className="text-7xl font-bold leading-[0.85] tracking-tighter mb-4 text-theme-fg">
                 Transforming
                 <br />
                 <span className="italic font-light opacity-40">Code into Context.</span>
               </h1>
-              <p className="font-serif text-lg text-[#1A1A1A]/60 italic max-w-sm">
+              <p className="font-serif text-lg text-theme-fg/60 italic max-w-sm">
                 A deterministic extraction engine for technical documentation and LLM readiness.
               </p>
             </div>
@@ -553,12 +586,12 @@ export default function App() {
                 desc: 'Auto-indexing... generating semantic summaries.',
               },
             ].map((step) => (
-              <div key={step.num} className="border-t border-[#1A1A1A] pt-6 group">
+              <div key={step.num} className="border-t border-theme-border pt-6 group">
                 <div className="font-sans text-[10px] uppercase tracking-[0.4em] font-black mb-4 flex items-center">
-                  <span className="w-1.5 h-1.5 bg-[#1A1A1A] rounded-full mr-2 group-hover:scale-150 transition-transform"></span>
+                  <span className="w-1.5 h-1.5 bg-theme-fg rounded-full mr-2 group-hover:scale-150 transition-transform"></span>
                   {step.num} {step.title}
                 </div>
-                <p className="text-sm italic opacity-60 leading-relaxed font-serif">
+                <p className="text-sm italic opacity-60 leading-relaxed font-serif text-theme-fg">
                   {isProcessing && progress.includes(step.title) ? (
                     <span className="animate-pulse">Active: {progress}</span>
                   ) : (
@@ -570,10 +603,10 @@ export default function App() {
           </div>
 
           <div className="flex-1 min-h-[400px] flex flex-col relative group">
-            <div className="absolute inset-x-0 bottom-0 top-0 bg-white border border-[#1A1A1A] shadow-[16px_16px_0px_0px_rgba(26,26,26,0.03)] pointer-events-none"></div>
+            <div className="absolute inset-x-0 bottom-0 top-0 bg-theme-bg border border-theme-border shadow-[16px_16px_0px_0px_var(--preview-shadow)] pointer-events-none"></div>
 
-            <div className="relative flex-1 p-10 flex flex-col overflow-hidden bg-white mt-4 mx-4 mb-4 border border-[#1A1A1A]">
-              <div className="absolute top-4 right-6 font-sans text-[8px] uppercase tracking-[0.3em] font-black opacity-20">
+            <div className="relative flex-1 p-10 flex flex-col overflow-hidden bg-theme-bg mt-4 mx-4 mb-4 border border-theme-border">
+              <div className="absolute top-4 right-6 font-sans text-[8px] uppercase tracking-[0.3em] font-black opacity-20 text-theme-fg">
                 Consolidated Output
               </div>
 
@@ -585,11 +618,11 @@ export default function App() {
                     animate={{ opacity: 1 }}
                     className="flex-1 flex flex-col items-center justify-center text-center p-12"
                   >
-                    <Loader2 className="w-8 h-8 animate-spin mb-4 opacity-20" />
-                    <div className="font-serif italic text-2xl mb-2 opacity-60">
+                    <Loader2 className="w-8 h-8 animate-spin mb-4 opacity-20 text-theme-fg" />
+                    <div className="font-serif italic text-2xl mb-2 opacity-60 text-theme-fg">
                       System actively processing
                     </div>
-                    <div className="font-sans text-[10px] uppercase tracking-widest font-bold opacity-30">
+                    <div className="font-sans text-[10px] uppercase tracking-widest font-bold opacity-30 text-theme-fg">
                       {progress}
                     </div>
                   </motion.div>
@@ -598,7 +631,7 @@ export default function App() {
                     key="result"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="flex-1 overflow-y-auto pr-4 font-mono text-xs text-[#1A1A1A]/80 leading-relaxed prose prose-slate max-w-none prose-headings:font-serif prose-headings:italic font-mono"
+                    className="flex-1 overflow-y-auto pr-4 font-mono text-xs text-theme-fg/80 leading-relaxed prose prose-slate max-w-none prose-headings:font-serif prose-headings:italic prose-headings:text-theme-fg prose-p:text-theme-fg prose-strong:text-theme-fg prose-code:text-theme-fg font-mono"
                   >
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                       {generateMarkdownStr()}
@@ -611,18 +644,18 @@ export default function App() {
                   >
                     <div
                       className={cn(
-                        'font-serif italic text-xl mb-4',
-                        error.includes('cancelled') ? 'text-[#1A1A1A]/60' : 'text-red-500',
+                        'font-serif italic text-xl mb-4 text-theme-fg',
+                        error.includes('cancelled') ? 'opacity-60' : 'text-red-500',
                       )}
                     >
                       {error.includes('cancelled') ? 'Operation Stopped' : 'Pipeline Interrupted'}
                     </div>
-                    <div className="font-sans text-[10px] uppercase font-black opacity-30 border border-[#1A1A1A]/20 px-4 py-2">
+                    <div className="font-sans text-[10px] uppercase font-black opacity-30 border border-theme-border/20 px-4 py-2 text-theme-fg">
                       {error}
                     </div>
                     <button
                       onClick={() => setError(null)}
-                      className="mt-8 font-sans text-[10px] uppercase font-black underline underline-offset-4"
+                      className="mt-8 font-sans text-[10px] uppercase font-black underline underline-offset-4 text-theme-fg"
                     >
                       Reset View
                     </button>
@@ -632,27 +665,27 @@ export default function App() {
                     key="empty"
                     className="flex-1 flex flex-col items-center justify-center text-center opacity-10 grayscale"
                   >
-                    <FileText className="w-16 h-16 mb-4 stroke-1" />
-                    <div className="font-serif italic text-2xl">Awaiting Repository Input</div>
+                    <FileText className="w-16 h-16 mb-4 stroke-1 text-theme-fg" />
+                    <div className="font-serif italic text-2xl text-theme-fg">Awaiting Repository Input</div>
                   </motion.div>
                 )}
               </AnimatePresence>
 
               {!isProcessing && result && (
-                <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
+                <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-theme-bg to-transparent pointer-events-none"></div>
               )}
             </div>
           </div>
         </section>
       </main>
 
-      <footer className="h-14 border-t border-[#1A1A1A] flex items-center justify-between px-12 font-sans text-[9px] uppercase tracking-[0.3em] font-black opacity-40 shrink-0">
+      <footer className="h-14 border-t border-theme-border flex items-center justify-between px-12 font-sans text-[9px] uppercase tracking-[0.3em] font-black opacity-40 shrink-0 text-theme-fg">
         <div className="flex gap-8">
           <span>Session: {sessionId}</span>
           <span>Status: Deterministic</span>
         </div>
         <div className="flex gap-8">
-          <span>2024 Design System</span>
+          <span>{new Date().getFullYear()} Design System</span>
           <span className="italic">Technical Documentation Redefined</span>
         </div>
       </footer>

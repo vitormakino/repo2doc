@@ -5,10 +5,53 @@
   --font-serif: 'Playfair Display', 'Libre Baskerville', serif;
   --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+
+  --color-theme-bg: var(--bg);
+  --color-theme-fg: var(--fg);
+  --color-theme-border: var(--border);
+  --color-theme-accent: var(--accent);
 }
 
 @layer base {
+  :root {
+    --bg: #fcfaf7;
+    --fg: #1a1a1a;
+    --border: #1a1a1a;
+    --accent: #1a1a1a;
+    --border-shadow: rgba(26, 26, 26, 0.1);
+    --preview-shadow: rgba(26, 26, 26, 0.03);
+  }
+
+  [data-theme='dark'] {
+    --bg: #121212;
+    --fg: #e0e0e0;
+    --border: #333333;
+    --accent: #bb86fc;
+    --border-shadow: rgba(0, 0, 0, 0.5);
+    --preview-shadow: rgba(0, 0, 0, 0.3);
+  }
+
+  [data-theme='solarized'] {
+    --bg: #fdf6e3;
+    --fg: #073642;
+    --border: #93a1a1;
+    --accent: #268bd2;
+    --border-shadow: rgba(7, 54, 66, 0.1);
+    --preview-shadow: rgba(7, 54, 66, 0.03);
+  }
+
+  [data-theme='everforest'] {
+    --bg: #2b3339;
+    --fg: #d3c6aa;
+    --border: #475258;
+    --accent: #a7c080;
+    --border-shadow: rgba(0, 0, 0, 0.4);
+    --preview-shadow: rgba(0, 0, 0, 0.2);
+  }
+
   body {
-    @apply bg-[#FCFAF7] text-[#1A1A1A] font-serif;
+    background-color: var(--bg);
+    color: var(--fg);
+    @apply font-serif transition-colors duration-300;
   }
 }

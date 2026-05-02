@@ -114,4 +114,29 @@ test.describe('RepoDoc Core Flow', () => {
     const download = await downloadPromise;
     expect(download.suggestedFilename()).toBe('docs.md');
   });
+
+  test('should switch themes and apply correct colors', async ({ page }) => {
+    const app = page.locator('#repo-doc-app');
+
+    // 1. Light Theme (Default)
+    await expect(app).toHaveAttribute('data-theme', 'light');
+
+    // 2. Switch to Dark
+    await page.getByTitle('dark').click();
+    await expect(app).toHaveAttribute('data-theme', 'dark');
+    // #121212 is rgb(18, 18, 18)
+    await expect(app).toHaveCSS('background-color', 'rgb(18, 18, 18)');
+
+    // 3. Switch to Solarized
+    await page.getByTitle('solarized').click();
+    await expect(app).toHaveAttribute('data-theme', 'solarized');
+    // #fdf6e3 is rgb(253, 246, 227)
+    await expect(app).toHaveCSS('background-color', 'rgb(253, 246, 227)');
+
+    // 4. Switch to Everforest
+    await page.getByTitle('everforest').click();
+    await expect(app).toHaveAttribute('data-theme', 'everforest');
+    // #2b3339 is rgb(43, 51, 57)
+    await expect(app).toHaveCSS('background-color', 'rgb(43, 51, 57)');
+  });
 });
