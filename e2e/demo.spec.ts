@@ -63,6 +63,8 @@ test.describe('RepoDoc Presentation Demo', () => {
 
   test('main-feature-demo', async ({ page }) => {
     await page.goto('/');
+    // Wait for config to load
+    await expect(page.getByRole('button', { name: 'remote' }).or(page.getByRole('button', { name: 'local' }))).toBeVisible();
     
     // [NARRATION]: "Welcome to RepoDoc, the tool that turns your codebase into beautiful documentation."
     await page.waitForTimeout(2000); 
@@ -86,9 +88,9 @@ test.describe('RepoDoc Presentation Demo', () => {
 
     if (githubStatus.githubEnabled) {
       await page.getByRole('button', { name: 'remote' }).click();
-      const repoInput = page.getByPlaceholder('vitor-makino/repodoc');
+      const repoInput = page.getByPlaceholder('https://github.com/owner/repo');
       await repoInput.click();
-      await page.keyboard.type('vitor-makino/repodoc', { delay: 100 });
+      await page.keyboard.type('vitormakino/repodoc', { delay: 100 });
       await page.keyboard.press('Enter');
       await page.waitForTimeout(1000);
     } else {

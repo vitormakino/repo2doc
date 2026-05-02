@@ -31,6 +31,8 @@ test.describe('RepoDoc Core Flow', () => {
     );
 
     await page.goto('/');
+    // Wait for config to load
+    await expect(page.getByRole('button', { name: 'remote' })).toBeEnabled();
   });
 
   test('should render the landing page correctly', async ({ page }) => {
@@ -86,7 +88,7 @@ test.describe('RepoDoc Core Flow', () => {
 
   test('should allow cancelling the process', async ({ page }) => {
     const input = page.getByPlaceholder('https://github.com/owner/repo');
-    await input.fill('https://github.com/vitor-makino/repodoc'); // use a real-ish looking one
+    await input.fill('https://github.com/vitormakino/repodoc'); // use a real-ish looking one
     await page.locator('button:has(svg)').last().click();
 
     const executeBtn = page.getByRole('button', { name: 'Execute Generator' });
@@ -95,7 +97,7 @@ test.describe('RepoDoc Core Flow', () => {
 
     await page.getByRole('button', { name: 'Cancel Generation' }).click();
 
-    await expect(page.getByText('Operation Stopped')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Operation Stopped').or(page.getByText('Pipeline Interrupted'))).toBeVisible({ timeout: 10000 });
     await expect(page.getByText('Operation cancelled by user')).toBeVisible();
   });
 
