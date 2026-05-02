@@ -69,7 +69,10 @@ export default function App() {
 
   const addSource = () => {
     if (sourceType === 'remote') {
-      const repoData = parseRepoUrl(repoUrl);
+      if (!repoUrl) return;
+      // Allow both owner/repo and full URL
+      const normalizedUrl = repoUrl.includes('github.com/') ? repoUrl : `https://github.com/${repoUrl}`;
+      const repoData = parseRepoUrl(normalizedUrl);
       if (!repoData) {
         setError('Invalid GitHub URL. Example: https://github.com/owner/repo');
         return;
@@ -77,7 +80,7 @@ export default function App() {
       const newSource: DocSource = {
         id: Math.random().toString(36).substring(7),
         type: 'remote',
-        url: repoUrl,
+        url: normalizedUrl,
         label: `${repoData.owner}/${repoData.repo}`,
       };
       setSources((prev) => [...prev, newSource]);
@@ -698,10 +701,10 @@ export default function App() {
                     <div
                       className={cn(
                         'font-serif italic text-xl mb-4 text-theme-fg',
-                        error.includes('cancelled') ? 'opacity-60' : 'text-red-500',
+                        error && error.includes('cancelled') ? 'opacity-60' : 'text-red-500',
                       )}
                     >
-                      {error.includes('cancelled') ? 'Operation Stopped' : 'Pipeline Interrupted'}
+                      {error && error.includes('cancelled') ? 'Operation Stopped' : 'Pipeline Interrupted'}
                     </div>
                     <div className="font-sans text-[10px] uppercase font-black opacity-30 border border-theme-border/20 px-4 py-2 text-theme-fg">
                       {error}
