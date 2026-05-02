@@ -15,6 +15,13 @@ const octokit = new Octokit({
   auth: process.env.GITHUB_TOKEN,
 });
 
+// API routes go here
+app.get('/api/config', (req, res) => {
+  res.json({
+    githubEnabled: !!process.env.GITHUB_TOKEN,
+  });
+});
+
 // GitHub Content Fetching
 app.get('/api/github/repo', async (req, res) => {
   try {

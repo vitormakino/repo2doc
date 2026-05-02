@@ -28,6 +28,16 @@ function cn(...inputs: ClassValue[]) {
 type Theme = 'light' | 'dark' | 'solarized' | 'everforest';
 
 export default function App() {
+  const [config, setConfig] = useState<{ githubEnabled: boolean }>({ githubEnabled: false });
+  const geminiAvailable = !!process.env.GEMINI_API_KEY;
+
+  useEffect(() => {
+    fetch('/api/config')
+      .then((res) => res.json())
+      .catch(() => ({ githubEnabled: false }))
+      .then(setConfig);
+  }, []);
+
   const ai = useMemo(() => new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' }), []);
 
   const [theme, setTheme] = useState<Theme>('light');
@@ -404,13 +414,14 @@ export default function App() {
               {(['remote', 'local'] as SourceType[]).map((type) => (
                 <button
                   key={type}
-                  disabled={isProcessing}
+                  disabled={isProcessing || (type === 'remote' && !config.githubEnabled)}
                   onClick={() => setSourceType(type)}
                   className={cn(
                     'flex-1 flex items-center justify-center gap-2 py-3 px-3 text-[10px] font-sans uppercase font-bold tracking-wider transition-all',
                     sourceType === type
                       ? 'bg-theme-fg text-theme-bg'
                       : 'text-theme-fg opacity-30 hover:opacity-50',
+                    type === 'remote' && !config.githubEnabled && 'grayscale cursor-not-allowed',
                   )}
                 >
                   {type === 'remote' ? (
@@ -423,7 +434,7 @@ export default function App() {
               ))}
             </div>
 
-            {sourceType === 'remote' ? (
+            {sourceType === 'remote' && config.githubEnabled ? (
               <div className="space-y-4">
                 <div className="relative">
                   <input
@@ -445,6 +456,15 @@ export default function App() {
                 </div>
                 <p className="text-[10px] font-sans font-medium opacity-40 italic">
                   Add GitHub repositories to the pool
+                </p>
+              </div>
+            ) : sourceType === 'remote' && !config.githubEnabled ? (
+              <div className="p-4 border border-theme-border/20 rounded-sm bg-theme-fg/5">
+                <p className="text-[10px] font-sans font-bold uppercase tracking-wider opacity-60 mb-2">
+                  GitHub Disabled
+                </p>
+                <p className="text-[10px] font-sans opacity-40 leading-relaxed italic">
+                  Provide a GITHUB_TOKEN in environment variables to enable remote repository extraction.
                 </p>
               </div>
             ) : (
@@ -471,36 +491,52 @@ export default function App() {
                 { id: 'generateSummaries', label: 'AI Summaries' },
                 { id: 'generateIndex', label: 'Global Index' },
                 { id: 'llmOptimized', label: 'LLM Optimized' },
-              ].map((opt) => (
-                <label
-                  key={opt.id}
-                  className="flex items-center justify-between font-sans text-xs font-bold tracking-tight cursor-pointer py-2 border-b border-theme-border/5 hover:bg-theme-fg/5 px-2 -mx-2 transition-colors"
-                >
-                  <span
+              ].map((opt) => {
+                const isDisabled =
+                  isProcessing ||
+                  ((opt.id === 'generateSummaries' || opt.id === 'llmOptimized') &&
+                    !geminiAvailable);
+                return (
+                  <label
+                    key={opt.id}
                     className={cn(
-                      options[opt.id as keyof ProcessingOptions] ? 'opacity-100' : 'opacity-30',
+                      'flex items-center justify-between font-sans text-xs font-bold tracking-tight cursor-pointer py-2 border-b border-theme-border/5 hover:bg-theme-fg/5 px-2 -mx-2 transition-colors',
+                      isDisabled && 'opacity-30 cursor-not-allowed grayscale',
                     )}
                   >
-                    {opt.label}
-                  </span>
-                  <div className="relative">
-                    <input
-                      disabled={isProcessing}
-                      type="checkbox"
-                      checked={!!options[opt.id as keyof ProcessingOptions]}
-                      onChange={(e) => setOptions({ ...options, [opt.id]: e.target.checked })}
-                      className="sr-only peer"
-                    />
-                    <div className="w-8 h-4 bg-transparent border border-theme-border rounded-full transition-colors peer-checked:bg-theme-fg"></div>
-                    <div
+                    <span
                       className={cn(
-                        'absolute top-1 w-2 h-2 rounded-full transition-all',
-                        options[opt.id as keyof ProcessingOptions] ? 'right-1 bg-theme-bg' : 'left-1 bg-theme-fg',
+                        options[opt.id as keyof ProcessingOptions] ? 'opacity-100' : 'opacity-30',
                       )}
-                    ></div>
-                  </div>
-                </label>
-              ))}
+                    >
+                      {opt.label}
+                      {isDisabled && !isProcessing && (
+                        <span className="block text-[8px] uppercase tracking-tighter opacity-100 text-red-500">
+                          Gemini Key Missing
+                        </span>
+                      )}
+                    </span>
+                    <div className="relative">
+                      <input
+                        disabled={isDisabled}
+                        type="checkbox"
+                        checked={!!options[opt.id as keyof ProcessingOptions]}
+                        onChange={(e) => setOptions({ ...options, [opt.id]: e.target.checked })}
+                        className="sr-only peer"
+                      />
+                      <div className="w-8 h-4 bg-transparent border border-theme-border rounded-full transition-colors peer-checked:bg-theme-fg"></div>
+                      <div
+                        className={cn(
+                          'absolute top-1 w-2 h-2 rounded-full transition-all',
+                          options[opt.id as keyof ProcessingOptions]
+                            ? 'right-1 bg-theme-bg'
+                            : 'left-1 bg-theme-fg',
+                        )}
+                      ></div>
+                    </div>
+                  </label>
+                );
+              })}
             </div>
           </div>
 

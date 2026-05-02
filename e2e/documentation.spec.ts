@@ -138,4 +138,28 @@ test.describe('RepoDoc Core Flow', () => {
     // #2b3339 is rgb(43, 51, 57)
     await expect(app).toHaveCSS('background-color', 'rgb(43, 51, 57)');
   });
+
+  test('should disable GitHub source when GITHUB_TOKEN is missing', async ({ page }) => {
+    // Intercept config API to return githubEnabled: false
+    await page.route('/api/config', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ githubEnabled: false }),
+      }),
+    );
+
+    // Refresh page to apply mocked config
+    await page.reload();
+
+    const remoteButton = page.getByRole('button', { name: 'remote' });
+
+    // Remote button should be disabled and have grayscale class
+    await expect(remoteButton).toBeDisabled();
+    await expect(remoteButton).toHaveClass(/grayscale/);
+
+    // Should show "GitHub Disabled" message
+    await expect(page.getByText('GitHub Disabled')).toBeVisible();
+    await expect(page.getByText('Provide a GITHUB_TOKEN')).toBeVisible();
+  });
 });
