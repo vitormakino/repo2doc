@@ -291,7 +291,10 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
-  const [sessionId] = useState(() => Math.random().toString(36).substring(7).toUpperCase());
+  const [sessionId] = useState(() => {
+    const rand = globalThis.crypto.getRandomValues(new Uint32Array(1))[0];
+    return rand.toString(36).toUpperCase();
+  });
 
   return (
     <div id="repo-doc-app" data-theme={theme} className="min-h-screen flex flex-col">
