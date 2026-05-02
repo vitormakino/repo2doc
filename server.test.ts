@@ -17,16 +17,14 @@ vi.mock('@octokit/rest', () => ({
         getContent: vi
           .fn()
           .mockResolvedValue({ data: { name: 'README.md', type: 'file', content: 'hello' } }),
-        listCommits: vi
-          .fn()
-          .mockResolvedValue({
-            data: [
-              {
-                sha: '123',
-                commit: { message: 'test', author: { name: 'user', date: '2024-01-01' } },
-              },
-            ],
-          }),
+        listCommits: vi.fn().mockResolvedValue({
+          data: [
+            {
+              sha: '123',
+              commit: { message: 'test', author: { name: 'user', date: '2024-01-01' } },
+            },
+          ],
+        }),
       },
     };
   }),

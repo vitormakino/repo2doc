@@ -13,11 +13,13 @@ test.describe('RepoDoc Presentation Demo', () => {
     // Mock GitHub API routes
     await page.route(/\/api\/github\/repo.*/, async (route) => {
       // Add a delay to make demo look good and show processing state
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      await new Promise((resolve) => setTimeout(resolve, 3000));
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify([{ path: 'README.md', name: 'README.md', content: '# Mock README', type: 'file' }]),
+        body: JSON.stringify([
+          { path: 'README.md', name: 'README.md', content: '# Mock README', type: 'file' },
+        ]),
       });
     });
     // 1. Inject Visual Cursor Effect
@@ -42,7 +44,7 @@ test.describe('RepoDoc Presentation Demo', () => {
         box.style.display = 'block';
         box.style.transform = `translate(${e.clientX - 15}px, ${e.clientY - 15}px)`;
       });
-      
+
       document.addEventListener('mousedown', () => {
         box.style.background = 'rgba(255, 0, 0, 0.6)';
         box.style.width = '20px';
@@ -81,9 +83,9 @@ test.describe('RepoDoc Presentation Demo', () => {
 
     await expect(remote).toBeVisible();
     await expect(local).toBeVisible();
-    
+
     // [NARRATION]: "Welcome to RepoDoc, the tool that turns your codebase into beautiful documentation."
-    await page.waitForTimeout(2000); 
+    await page.waitForTimeout(2000);
 
     // [NARRATION]: "We support multiple themes to match your creative flow. Let's explore them."
     const themes = ['dark', 'solarized', 'everforest', 'light'];
@@ -91,7 +93,7 @@ test.describe('RepoDoc Presentation Demo', () => {
       const themeBtn = page.getByTitle(themeName);
       if (await themeBtn.isVisible()) {
         await themeBtn.click();
-        await page.waitForTimeout(1500); 
+        await page.waitForTimeout(1500);
       }
     }
 
@@ -111,17 +113,17 @@ test.describe('RepoDoc Presentation Demo', () => {
       await page.waitForTimeout(1000);
     } else {
       // Demo with local if remote is disabled
-       await page.getByRole('button', { name: 'local' }).click();
-       await page.waitForTimeout(1000);
+      await page.getByRole('button', { name: 'local' }).click();
+      await page.waitForTimeout(1000);
     }
 
     // [NARRATION]: "Once configured, simply execute the generator to build your documentation site."
     const executeBtn = page.getByRole('button', { name: 'Execute Generator' });
     if (await executeBtn.isVisible()) {
-       await executeBtn.click();
-       // [NARRATION]: "RepoDoc processes your files, generates summaries, and builds a comprehensive index."
-       await page.waitForTimeout(5000); 
-       await page.waitForTimeout(3000); 
+      await executeBtn.click();
+      // [NARRATION]: "RepoDoc processes your files, generates summaries, and builds a comprehensive index."
+      await page.waitForTimeout(5000);
+      await page.waitForTimeout(3000);
     }
   });
 });

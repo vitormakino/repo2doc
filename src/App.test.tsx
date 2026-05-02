@@ -76,7 +76,7 @@ describe('App Component', () => {
     } as Response);
 
     render(<App />);
-    
+
     await waitFor(() => {
       expect(screen.getAllByText(/Gemini Key Missing/i)).toHaveLength(2);
     });

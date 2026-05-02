@@ -2,7 +2,7 @@ import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: './e2e',
-  timeout: 120000, 
+  timeout: 120000,
   fullyParallel: false,
   workers: 1,
   reporter: 'line',
@@ -24,7 +24,7 @@ export default defineConfig({
   projects: [
     {
       name: 'demo-chromium',
-      use: { 
+      use: {
         browserName: 'chromium',
       },
     },

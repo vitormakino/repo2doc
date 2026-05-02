@@ -71,7 +71,9 @@ export default function App() {
     if (sourceType === 'remote') {
       if (!repoUrl) return;
       // Allow both owner/repo and full URL
-      const normalizedUrl = repoUrl.includes('github.com/') ? repoUrl : `https://github.com/${repoUrl}`;
+      const normalizedUrl = repoUrl.includes('github.com/')
+        ? repoUrl
+        : `https://github.com/${repoUrl}`;
       const repoData = parseRepoUrl(normalizedUrl);
       if (!repoData) {
         setError('Invalid GitHub URL. Example: https://github.com/owner/repo');
@@ -348,7 +350,9 @@ export default function App() {
                 onClick={() => setTheme(t.id)}
                 className={cn(
                   'p-1.5 rounded-full transition-all',
-                  theme === t.id ? 'bg-theme-fg text-theme-bg shadow-lg' : 'opacity-40 hover:opacity-100',
+                  theme === t.id
+                    ? 'bg-theme-fg text-theme-bg shadow-lg'
+                    : 'opacity-40 hover:opacity-100',
                 )}
                 title={t.id}
               >
@@ -469,7 +473,8 @@ export default function App() {
                   GitHub Disabled
                 </p>
                 <p className="text-[10px] font-sans opacity-40 leading-relaxed italic">
-                  Provide a GITHUB_TOKEN in environment variables to enable remote repository extraction.
+                  Provide a GITHUB_TOKEN in environment variables to enable remote repository
+                  extraction.
                 </p>
               </div>
             ) : (
@@ -704,7 +709,9 @@ export default function App() {
                         error && error.includes('cancelled') ? 'opacity-60' : 'text-red-500',
                       )}
                     >
-                      {error && error.includes('cancelled') ? 'Operation Stopped' : 'Pipeline Interrupted'}
+                      {error && error.includes('cancelled')
+                        ? 'Operation Stopped'
+                        : 'Pipeline Interrupted'}
                     </div>
                     <div className="font-sans text-[10px] uppercase font-black opacity-30 border border-theme-border/20 px-4 py-2 text-theme-fg">
                       {error}
@@ -722,7 +729,9 @@ export default function App() {
                     className="flex-1 flex flex-col items-center justify-center text-center opacity-10 grayscale"
                   >
                     <FileText className="w-16 h-16 mb-4 stroke-1 text-theme-fg" />
-                    <div className="font-serif italic text-2xl text-theme-fg">Awaiting Repository Input</div>
+                    <div className="font-serif italic text-2xl text-theme-fg">
+                      Awaiting Repository Input
+                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>

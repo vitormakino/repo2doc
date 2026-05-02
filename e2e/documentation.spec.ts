@@ -16,11 +16,13 @@ test.describe('RepoDoc Core Flow', () => {
     // Mock GitHub API routes
     await page.route(/\/api\/github\/repo.*/, async (route) => {
       // Add a delay to allow cancellation test to catch the process and make demo look good
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      await new Promise((resolve) => setTimeout(resolve, 3000));
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify([{ path: 'README.md', name: 'README.md', content: '# Mock README', type: 'file' }]),
+        body: JSON.stringify([
+          { path: 'README.md', name: 'README.md', content: '# Mock README', type: 'file' },
+        ]),
       });
     });
 
@@ -99,7 +101,9 @@ test.describe('RepoDoc Core Flow', () => {
 
     await page.getByRole('button', { name: 'Cancel Generation' }).click();
 
-    await expect(page.getByText('Operation Stopped').or(page.getByText('Pipeline Interrupted'))).toBeVisible({ timeout: 10000 });
+    await expect(
+      page.getByText('Operation Stopped').or(page.getByText('Pipeline Interrupted')),
+    ).toBeVisible({ timeout: 10000 });
     await expect(page.getByText('Operation cancelled by user')).toBeVisible();
   });
 
@@ -138,7 +142,8 @@ test.describe('RepoDoc Core Flow', () => {
     expect(download.suggestedFilename()).toBe('docs.md');
 
     // Cleanup
-    if (fs.existsSync(path.join(tempDir, 'README.md'))) fs.unlinkSync(path.join(tempDir, 'README.md'));
+    if (fs.existsSync(path.join(tempDir, 'README.md')))
+      fs.unlinkSync(path.join(tempDir, 'README.md'));
     if (fs.existsSync(tempDir)) fs.rmdirSync(tempDir);
   });
 
