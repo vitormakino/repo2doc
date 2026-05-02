@@ -71,4 +71,47 @@ test.describe('RepoDoc Core Flow', () => {
     await expect(page.getByText('Operation Stopped')).toBeVisible();
     await expect(page.getByText('Operation cancelled by user')).toBeVisible();
   });
+
+  test('should complete full documentation flow with local files and export', async ({ page }) => {
+    // 1. Switch to local mode
+    await page.getByRole('button', { name: 'local' }).click();
+    const selectFolderBtn = page.getByText('Select Folder');
+    await expect(selectFolderBtn).toBeVisible();
+
+    // 2. Mock file upload (folder)
+    const fileChooserPromise = page.waitForEvent('filechooser');
+    await selectFolderBtn.click();
+    const fileChooser = await fileChooserPromise;
+
+    await fileChooser.setFiles([
+      {
+        name: 'README.md',
+        mimeType: 'text/markdown',
+        buffer: Buffer.from('# Project Title\nThis is a test readme.'),
+      },
+      {
+        name: 'docs/guide.md',
+        mimeType: 'text/markdown',
+        buffer: Buffer.from('# User Guide\nHow to use this app.'),
+      },
+    ]);
+
+    // 3. Verify source added to pool
+    await expect(page.getByText('Local Project')).toBeVisible();
+
+    // 4. Execute Generator
+    const executeBtn = page.getByRole('button', { name: 'Execute Generator' });
+    await executeBtn.click();
+
+    // 5. Verify process completion
+    await expect(page.getByText('Generation complete!')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText('Project Title')).toBeVisible();
+    await expect(page.getByText('User Guide')).toBeVisible();
+
+    // 6. Test Exporters
+    const downloadPromise = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Markdown' }).click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toBe('docs.md');
+  });
 });
