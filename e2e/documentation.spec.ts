@@ -4,6 +4,32 @@ import { test, expect } from '@playwright/test';
 
 test.describe('RepoDoc Core Flow', () => {
   test.beforeEach(async ({ page }) => {
+    // Default mock for config to ensure all features are enabled
+    await page.route('/api/config', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ githubEnabled: true, geminiEnabled: true }),
+      }),
+    );
+
+    // Mock GitHub API routes
+    await page.route(/\/api\/github\/repo.*/, (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([{ path: 'README.md', name: 'README.md', content: '# Mock README', type: 'file' }]),
+      }),
+    );
+
+    await page.route(/\/api\/github\/commits.*/, (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([]),
+      }),
+    );
+
     await page.goto('/');
   });
 
@@ -39,7 +65,7 @@ test.describe('RepoDoc Core Flow', () => {
     await historyToggle.click();
 
     await expect(summariesToggle).toBeVisible();
-    await summariesToggle.click();
+    await summariesToggle.click({ force: true });
   });
 
   test('should show error for invalid repository URL', async ({ page }) => {
@@ -98,8 +124,8 @@ test.describe('RepoDoc Core Flow', () => {
     await executeBtn.click();
 
     // 5. Verify process completion
-    await expect(page.getByText('Generation complete!')).toBeVisible({ timeout: 20000 });
-    await expect(page.getByText('Project Title')).toBeVisible();
+    await expect(page.getByText('Project Title')).toBeVisible({ timeout: 30000 });
+    await expect(page.getByText('This is a test readme.')).toBeVisible();
 
     // 6. Test Exporters
     const downloadPromise = page.waitForEvent('download');

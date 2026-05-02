@@ -2,6 +2,14 @@ import { test } from '@playwright/test';
 
 test.describe('RepoDoc Presentation Demo', () => {
   test.beforeEach(async ({ page }) => {
+    // Default mock for config to ensure all features are enabled
+    await page.route('/api/config', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ githubEnabled: true, geminiEnabled: true }),
+      }),
+    );
     // 1. Inject Visual Cursor Effect
     await page.addInitScript(() => {
       const box = document.createElement('div');

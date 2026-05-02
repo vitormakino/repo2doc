@@ -5,7 +5,7 @@ import App from './App';
 // Mock fetch
 global.fetch = vi.fn().mockResolvedValue({
   ok: true,
-  json: () => Promise.resolve({ githubEnabled: true }),
+  json: () => Promise.resolve({ githubEnabled: true, geminiEnabled: true }),
 });
 
 // Mock GoogleGenAI
@@ -22,6 +22,11 @@ vi.mock('@google/genai', () => ({
 describe('App Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default fetch mock
+    vi.mocked(global.fetch).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ githubEnabled: true, geminiEnabled: true }),
+    } as Response);
   });
 
   it('renders correctly and defaults to light theme', () => {
@@ -50,7 +55,7 @@ describe('App Component', () => {
   it('disables GitHub if config returns githubEnabled: false', async () => {
     vi.mocked(global.fetch).mockResolvedValueOnce({
       ok: true,
-      json: () => Promise.resolve({ githubEnabled: false }),
+      json: () => Promise.resolve({ githubEnabled: false, geminiEnabled: true }),
     } as Response);
 
     render(<App />);
@@ -64,14 +69,16 @@ describe('App Component', () => {
     expect(remoteBtn).toHaveClass('grayscale');
   });
 
-  it('shows missing Gemini key message if GEMINI_API_KEY is not provided', () => {
-    // We can't easily mock process.env for just one test without affecting others if it's constant
-    // but we can check if it shows up if the env is actually missing in this test run environment
+  it('shows missing Gemini key message if geminiEnabled is false', async () => {
+    vi.mocked(global.fetch).mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ githubEnabled: true, geminiEnabled: false }),
+    } as Response);
+
     render(<App />);
     
-    // In this test environment, GEMINI_API_KEY is likely undefined unless set
-    if (!process.env.GEMINI_API_KEY) {
+    await waitFor(() => {
       expect(screen.getAllByText(/Gemini Key Missing/i)).toHaveLength(2);
-    }
+    });
   });
 });

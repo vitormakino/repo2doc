@@ -19,6 +19,7 @@ const octokit = new Octokit({
 app.get('/api/config', (req, res) => {
   res.json({
     githubEnabled: !!process.env.GITHUB_TOKEN,
+    geminiEnabled: !!process.env.GEMINI_API_KEY,
   });
 });
 

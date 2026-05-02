@@ -28,13 +28,15 @@ function cn(...inputs: ClassValue[]) {
 type Theme = 'light' | 'dark' | 'solarized' | 'everforest';
 
 export default function App() {
-  const [config, setConfig] = useState<{ githubEnabled: boolean }>({ githubEnabled: false });
-  const geminiAvailable = !!process.env.GEMINI_API_KEY;
+  const [config, setConfig] = useState<{ githubEnabled: boolean; geminiEnabled: boolean }>({
+    githubEnabled: false,
+    geminiEnabled: false,
+  });
 
   useEffect(() => {
     fetch('/api/config')
       .then((res) => res.json())
-      .catch(() => ({ githubEnabled: false }))
+      .catch(() => ({ githubEnabled: false, geminiEnabled: false }))
       .then(setConfig);
   }, []);
 
@@ -495,7 +497,7 @@ export default function App() {
                 const isDisabled =
                   isProcessing ||
                   ((opt.id === 'generateSummaries' || opt.id === 'llmOptimized') &&
-                    !geminiAvailable);
+                    !config.geminiEnabled);
                 return (
                   <label
                     key={opt.id}
