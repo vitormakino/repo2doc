@@ -3,11 +3,17 @@ import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { Octokit } from '@octokit/rest';
 import dotenv from 'dotenv';
+import rateLimit from 'express-rate-limit';
 
 dotenv.config();
 
 export const app = express();
 const PORT = 3000;
+
+const spaFallbackLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+});
 
 app.use(express.json({ limit: '50mb' }));
 
@@ -71,7 +77,7 @@ async function startServer() {
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
-    app.get('*', (req, res) => {
+    app.get('*', spaFallbackLimiter, (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
