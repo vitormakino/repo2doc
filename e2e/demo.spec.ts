@@ -1,4 +1,4 @@
-import { test } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 
 test.describe('RepoDoc Presentation Demo', () => {
   test.beforeEach(async ({ page }) => {
@@ -10,6 +10,16 @@ test.describe('RepoDoc Presentation Demo', () => {
         body: JSON.stringify({ githubEnabled: true, geminiEnabled: true }),
       }),
     );
+    // Mock GitHub API routes
+    await page.route(/\/api\/github\/repo.*/, async (route) => {
+      // Add a delay to make demo look good and show processing state
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([{ path: 'README.md', name: 'README.md', content: '# Mock README', type: 'file' }]),
+      });
+    });
     // 1. Inject Visual Cursor Effect
     await page.addInitScript(() => {
       const box = document.createElement('div');

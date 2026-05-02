@@ -14,13 +14,15 @@ test.describe('RepoDoc Core Flow', () => {
     );
 
     // Mock GitHub API routes
-    await page.route(/\/api\/github\/repo.*/, (route) =>
-      route.fulfill({
+    await page.route(/\/api\/github\/repo.*/, async (route) => {
+      // Add a delay to allow cancellation test to catch the process and make demo look good
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      return route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify([{ path: 'README.md', name: 'README.md', content: '# Mock README', type: 'file' }]),
-      }),
-    );
+      });
+    });
 
     await page.route(/\/api\/github\/commits.*/, (route) =>
       route.fulfill({
