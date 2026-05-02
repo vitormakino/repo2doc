@@ -291,13 +291,14 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
-  const [sessionId] = useState(() => {
-    const rand = globalThis.crypto.getRandomValues(new Uint32Array(1))[0];
-    return rand.toString(36).toUpperCase();
-  });
+  const [sessionId] = useState(() => Math.random().toString(36).substring(7).toUpperCase());
 
   return (
-    <div id="repo-doc-app" data-theme={theme} className="min-h-screen flex flex-col">
+    <div
+      id="repo-doc-app"
+      data-theme={theme}
+      className="min-h-screen flex flex-col bg-theme-bg text-theme-fg transition-colors duration-300"
+    >
       <header className="border-b border-theme-border h-20 flex items-center justify-between px-12 shrink-0">
         <div className="text-3xl font-black uppercase tracking-tighter italic flex items-center gap-3">
           RepoDoc

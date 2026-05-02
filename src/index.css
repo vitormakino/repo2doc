@@ -50,8 +50,6 @@
   }
 
   body {
-    background-color: var(--bg);
-    color: var(--fg);
-    @apply font-serif transition-colors duration-300;
+    @apply font-serif;
   }
 }

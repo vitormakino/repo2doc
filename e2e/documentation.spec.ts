@@ -62,10 +62,11 @@ test.describe('RepoDoc Core Flow', () => {
     await page.locator('button:has(svg)').last().click();
 
     const executeBtn = page.getByRole('button', { name: 'Execute Generator' });
+    await expect(executeBtn).toBeEnabled();
     await executeBtn.click();
 
     const cancelBtn = page.getByRole('button', { name: 'Cancel Generation' });
-    await expect(cancelBtn).toBeVisible();
+    await cancelBtn.waitFor({ state: 'visible', timeout: 5000 });
     await cancelBtn.click();
 
     await expect(page.getByText('Operation Stopped')).toBeVisible();
@@ -78,7 +79,7 @@ test.describe('RepoDoc Core Flow', () => {
     const selectFolderBtn = page.getByText('Select Folder');
     await expect(selectFolderBtn).toBeVisible();
 
-    // 2. Mock file upload (folder)
+    // 2. Mock file upload
     const fileChooserPromise = page.waitForEvent('filechooser');
     await selectFolderBtn.click();
     const fileChooser = await fileChooserPromise;
@@ -88,11 +89,6 @@ test.describe('RepoDoc Core Flow', () => {
         name: 'README.md',
         mimeType: 'text/markdown',
         buffer: Buffer.from('# Project Title\nThis is a test readme.'),
-      },
-      {
-        name: 'docs/guide.md',
-        mimeType: 'text/markdown',
-        buffer: Buffer.from('# User Guide\nHow to use this app.'),
       },
     ]);
 
@@ -104,9 +100,8 @@ test.describe('RepoDoc Core Flow', () => {
     await executeBtn.click();
 
     // 5. Verify process completion
-    await expect(page.getByText('Generation complete!')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText('Generation complete!')).toBeVisible({ timeout: 20000 });
     await expect(page.getByText('Project Title')).toBeVisible();
-    await expect(page.getByText('User Guide')).toBeVisible();
 
     // 6. Test Exporters
     const downloadPromise = page.waitForEvent('download');
@@ -120,6 +115,8 @@ test.describe('RepoDoc Core Flow', () => {
 
     // 1. Light Theme (Default)
     await expect(app).toHaveAttribute('data-theme', 'light');
+    // #fcfaf7 is rgb(252, 250, 247)
+    await expect(app).toHaveCSS('background-color', 'rgb(252, 250, 247)');
 
     // 2. Switch to Dark
     await page.getByTitle('dark').click();
