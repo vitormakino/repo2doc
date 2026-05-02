@@ -74,7 +74,13 @@ test.describe('RepoDoc Presentation Demo', () => {
   test('main-feature-demo', async ({ page }) => {
     await page.goto('/');
     // Wait for config to load
-    await expect(page.getByRole('button', { name: 'remote' }).or(page.getByRole('button', { name: 'local' }))).toBeVisible();
+    const remote = page.getByRole('button', { name: 'remote' });
+    const local = page.getByRole('button', { name: 'local' });
+
+    await expect(remote.or(local)).toHaveCount(2); // ambos no DOM
+
+    await expect(remote).toBeVisible();
+    await expect(local).toBeVisible();
     
     // [NARRATION]: "Welcome to RepoDoc, the tool that turns your codebase into beautiful documentation."
     await page.waitForTimeout(2000); 
