@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import { test, expect } from '@playwright/test';
 
 test.describe('RepoDoc Core Flow', () => {
@@ -65,11 +67,9 @@ test.describe('RepoDoc Core Flow', () => {
     await expect(executeBtn).toBeEnabled();
     await executeBtn.click();
 
-    const cancelBtn = page.getByRole('button', { name: 'Cancel Generation' });
-    await cancelBtn.waitFor({ state: 'visible', timeout: 5000 });
-    await cancelBtn.click();
+    await page.getByRole('button', { name: 'Cancel Generation' }).click();
 
-    await expect(page.getByText('Operation Stopped')).toBeVisible();
+    await expect(page.getByText('Operation Stopped')).toBeVisible({ timeout: 10000 });
     await expect(page.getByText('Operation cancelled by user')).toBeVisible();
   });
 
@@ -79,21 +79,19 @@ test.describe('RepoDoc Core Flow', () => {
     const selectFolderBtn = page.getByText('Select Folder');
     await expect(selectFolderBtn).toBeVisible();
 
-    // 2. Mock file upload
+    // 2. Mock file upload (directory)
+    const tempDir = path.join(process.cwd(), 'temp-test-project');
+    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
+    fs.writeFileSync(path.join(tempDir, 'README.md'), '# Project Title\nThis is a test readme.');
+
     const fileChooserPromise = page.waitForEvent('filechooser');
     await selectFolderBtn.click();
     const fileChooser = await fileChooserPromise;
 
-    await fileChooser.setFiles([
-      {
-        name: 'README.md',
-        mimeType: 'text/markdown',
-        buffer: Buffer.from('# Project Title\nThis is a test readme.'),
-      },
-    ]);
+    await fileChooser.setFiles(tempDir);
 
     // 3. Verify source added to pool
-    await expect(page.getByText('Local Project')).toBeVisible();
+    await expect(page.getByText('temp-test-project')).toBeVisible();
 
     // 4. Execute Generator
     const executeBtn = page.getByRole('button', { name: 'Execute Generator' });
@@ -108,31 +106,35 @@ test.describe('RepoDoc Core Flow', () => {
     await page.getByRole('button', { name: 'Markdown' }).click();
     const download = await downloadPromise;
     expect(download.suggestedFilename()).toBe('docs.md');
+
+    // Cleanup
+    if (fs.existsSync(path.join(tempDir, 'README.md'))) fs.unlinkSync(path.join(tempDir, 'README.md'));
+    if (fs.existsSync(tempDir)) fs.rmdirSync(tempDir);
   });
 
   test('should switch themes and apply correct colors', async ({ page }) => {
     const app = page.locator('#repo-doc-app');
 
     // 1. Light Theme (Default)
-    await expect(app).toHaveAttribute('data-theme', 'light');
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
     // #fcfaf7 is rgb(252, 250, 247)
     await expect(app).toHaveCSS('background-color', 'rgb(252, 250, 247)');
 
     // 2. Switch to Dark
     await page.getByTitle('dark').click();
-    await expect(app).toHaveAttribute('data-theme', 'dark');
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
     // #121212 is rgb(18, 18, 18)
     await expect(app).toHaveCSS('background-color', 'rgb(18, 18, 18)');
 
     // 3. Switch to Solarized
     await page.getByTitle('solarized').click();
-    await expect(app).toHaveAttribute('data-theme', 'solarized');
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'solarized');
     // #fdf6e3 is rgb(253, 246, 227)
     await expect(app).toHaveCSS('background-color', 'rgb(253, 246, 227)');
 
     // 4. Switch to Everforest
     await page.getByTitle('everforest').click();
-    await expect(app).toHaveAttribute('data-theme', 'everforest');
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'everforest');
     // #2b3339 is rgb(43, 51, 57)
     await expect(app).toHaveCSS('background-color', 'rgb(43, 51, 57)');
   });

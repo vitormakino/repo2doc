@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import {
   FolderPlus,
   Github,
@@ -31,11 +31,17 @@ export default function App() {
   const ai = useMemo(() => new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' }), []);
 
   const [theme, setTheme] = useState<Theme>('light');
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
+
   const [sourceType, setSourceType] = useState<SourceType>('remote');
   const [repoUrl, setRepoUrl] = useState('');
   const [sources, setSources] = useState<DocSource[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const isCancelled = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const [progress, setProgress] = useState('');
   const [result, setResult] = useState<DocState | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -94,6 +100,15 @@ export default function App() {
   const cancelProcessing = () => {
     isCancelled.current = true;
     setProgress('Cancelling...');
+  };
+
+  const handleCancel = () => {
+    cancelProcessing();
+    setError('Operation cancelled by user');
+    setIsProcessing(false);
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
   };
 
   const fetchGithubRepo = async (
@@ -294,11 +309,7 @@ export default function App() {
   const [sessionId] = useState(() => Math.random().toString(36).substring(7).toUpperCase());
 
   return (
-    <div
-      id="repo-doc-app"
-      data-theme={theme}
-      className="min-h-screen flex flex-col bg-theme-bg text-theme-fg transition-colors duration-300"
-    >
+    <div id="repo-doc-app" className="min-h-screen flex flex-col bg-theme-bg text-theme-fg">
       <header className="border-b border-theme-border h-20 flex items-center justify-between px-12 shrink-0">
         <div className="text-3xl font-black uppercase tracking-tighter italic flex items-center gap-3">
           RepoDoc
@@ -496,7 +507,7 @@ export default function App() {
           <div className="mt-auto pt-8">
             {isProcessing ? (
               <button
-                onClick={cancelProcessing}
+                onClick={handleCancel}
                 className="w-full py-6 border-2 border-red-500 text-red-500 font-sans font-black uppercase tracking-[0.2em] text-sm hover:bg-red-500 hover:text-white transition-all flex items-center justify-center gap-2"
               >
                 <XCircle className="w-4 h-4" />
