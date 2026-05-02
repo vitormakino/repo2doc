@@ -1,0 +1,21 @@
+# Dependências e Builds
+node_modules
+dist
+build
+.next
+
+# Testes e Relatórios
+test-results
+playwright-report
+demos
+coverage
+temp-test-project
+
+# Configurações e Logs
+*.log
+.env*
+! .env.example
+
+# Outros
+package-lock.json
+public/
